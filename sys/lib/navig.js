@@ -166,6 +166,7 @@ class Navig {
    * Listen for the 'popstate' event.
    * The popstate event is fired each time when the current history entry changes (user navigates to a new state).
    * That happens when user clicks on browser's Back/Forward button or when history.back(), history.forward(), history.go() methods are programatically called.
+   * Also popstate event occur when the a.href link is clicked (even if it contains only hashtag, for example: <a href="#">test</a>).
    * The event.state is property of the event is equal to the history state object.
    * @param {Function} listener - callback function with event parameter, for example pevent => { ... }
    * @returns {void}

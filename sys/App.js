@@ -166,7 +166,7 @@ class App {
     // A) test URI against routes when element with data-rg-href attribute is clicked --> 'pushstate'
     // B) test URI against routes when BACK/FORWARD button is clicked --> 'popstate'
     navig.onUrlChange(pevent => {
-      router._exe(pevent); // pevent is popstate or pushstae event (see navig.onUrlChange())
+      router._exe(pevent); // pevent is popstate or pushstate event (see navig.onUrlChange())
     });
 
     return this;

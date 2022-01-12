@@ -101,7 +101,10 @@ class Router extends RegochRouter {
       const end = new Date();
       trx.elapsedTime = (end - start) + ' ms'; // in miliseconds
 
-      if (this.debugRouter) { console.log(`%c --------- router exe end --> elapsedTime: ${this.trx.elapsedTime} ------`, 'color:#680C72; background:#E59FED'); }
+      if (this.debugRouter) {
+        console.log('Router trx::', trx);
+        console.log(`%c --------- router exe end --> elapsedTime: ${this.trx.elapsedTime} ------`, 'color:#680C72; background:#E59FED');
+      }
 
     } catch (err) {
       if (/AuthWarn::/.test(err.message)) { console.log(`%c${err.message}`, `color:#FF6500; background:#FFFEEE;`); }
