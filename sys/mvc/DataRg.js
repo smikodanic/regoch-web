@@ -267,12 +267,12 @@ class DataRg extends DataRgListeners {
       const attrVal = elem.getAttribute(attrName).trim(); // ifAge
       if (!attrVal) { console.error(`Attribute "data-rg-if" has bad definition (data-rg-if="${attrVal}").`); continue; }
       const propComp = attrVal.trim(); // controller property with comparison function, for example: ifAge $eq(22)
-      const propCompSplitted = propComp.split(/\s+/);
+      const propCompSplitted = propComp.split(/\s+\$/);
 
       const prop = propCompSplitted[0].trim(); // ifAge
       const val = this._getControllerValue('$model.' + prop);
 
-      const funcDef = propCompSplitted[1] ? propCompSplitted[1].trim() : false; // $eq(22)
+      const funcDef = propCompSplitted[1] ? '$' + propCompSplitted[1].trim() : false; // $eq(22)
       let tf = false;
       if (!!funcDef) {
         // parse data-rg-if with the comparison operators: $not(), $eq(22), $ne(22), ...
@@ -319,12 +319,12 @@ class DataRg extends DataRgListeners {
       const attrVal = elem.getAttribute(attrName).trim(); // ifAge
       if (!attrVal) { console.error(`Attribute "data-rg-spinner" has bad definition (data-rg-spinner="${attrVal}").`); continue; }
       const propComp = attrVal.trim(); // controller property with comparison function, for example: ifAge $eq(22)
-      const propCompSplitted = propComp.split(/\s+/);
+      const propCompSplitted = propComp.split(/\s+\$/);
 
       const prop = propCompSplitted[0].trim(); // ifAge
       const val = this._getControllerValue('$model.' + prop);
 
-      const funcDef = propCompSplitted[1] ? propCompSplitted[1].trim() : false; // $eq(22)
+      const funcDef = propCompSplitted[1] ? '$' + propCompSplitted[1].trim() : false; // $eq(22)
       let tf = false;
       if (!!funcDef) {
         // parse data-rg-spinner with the comparison operators: $not(), $eq(22), $ne(22), ...
@@ -477,12 +477,12 @@ class DataRg extends DataRgListeners {
       if (!attrVal) { console.error(`rgDisabled Error:: Attribute has bad definition (data-rg-disabled="${attrVal}").`); continue; }
 
       const propComp = attrVal.trim(); // controller property with comparison function, for example: ifAge $eq(22)
-      const propCompSplitted = propComp.split(/\s+/);
+      const propCompSplitted = propComp.split(/\s+\$/);
 
       const prop = propCompSplitted[0].trim(); // ifAge
       const val = this._getControllerValue('$model.' + prop);
 
-      const funcDef = propCompSplitted[1] ? propCompSplitted[1].trim() : false; // $eq(22)
+      const funcDef = propCompSplitted[1] ? '$' + propCompSplitted[1].trim() : false; // $eq(22)
       let tf = false;
       if (!!funcDef) {
         // parse data-rg-disabled with the comparison operators: $not(), $eq(22), $ne(22), ...
