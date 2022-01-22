@@ -308,8 +308,8 @@ class Aux {
     if (!matched) { console.error(`_funcParseErr: Function "${funcDef}" has bad definition.`); return {}; }
     const funcName = matched[1] || ''; // function name: products.list
 
-    const funcArgsStr = matched[2] || ''; // function arguments: 25, 'str', $event, $element, this.products
-    const funcArgs = !/\,/.test(funcArgsStr) ? [] : funcArgsStr
+    const funcArgsStr = !!matched[2] ? matched[2].trim() : ''; // function arguments: 25, 'str', $event, $element, this.products
+    const funcArgs = !funcArgsStr ? [] : funcArgsStr
       .split(',')
       .map(arg => {
         arg = arg.trim();
