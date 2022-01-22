@@ -96,7 +96,7 @@ class DataRgListeners extends Aux {
       if (!attrVal) { console.error(`Attribute "data-rg-click" has bad definition (data-rg-click="${attrVal}").`); continue; }
 
       const attrValSplited = attrVal.split(this.$rg.separator);
-      const funcDefs = attrValSplited[0]; // func1();func2();
+      const funcDefs = attrValSplited[0]; // func1();func2(a, b);
       const tf = !!attrValSplited[1] && attrValSplited[1].trim() === 'preventDefault';
 
       const handler = async event => {
