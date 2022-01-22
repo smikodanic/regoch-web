@@ -309,15 +309,15 @@ class Aux {
     const funcName = matched[1] || ''; // function name: products.list
 
     const funcArgsStr = matched[2] || ''; // function arguments: 25, 'str', $event, $element, this.products
-    const funcArgs = funcArgsStr
+    const funcArgs = !/\,/.test(funcArgsStr) ? [] : funcArgsStr
       .split(',')
       .map(arg => {
-        arg = arg.trim().replace(/\'|\"/g, '');
+        arg = arg.trim();
         if (arg === '$element') { arg = elem; }
         else if (arg === '$value') { arg = this._getElementValue(elem); }
         else if (arg === '$event') { arg = event; }
-        else if (arg === 'true' || arg === 'false') { arg = JSON.parse(arg); } // boolean
-        else if (/^-?\d+\.?\d*$/.test(arg)) { arg = +arg; } // number
+        else if ((arg === 'true' || arg === 'false') && !/\'/.test(arg)) { arg = JSON.parse(arg); } // boolean
+        else if (/^-?\d+\.?\d*$/.test(arg) && !/\'/.test(arg)) { arg = +arg; } // number
         else if (/^\/.+\/i?g?$/.test(arg)) { // if regular expression, for example in replace(/Some/i, 'some')
           const mat = arg.match(/^\/(.+)\/(i?g?)$/);
           arg = new RegExp(mat[1], mat[2]);
@@ -327,6 +327,7 @@ class Aux {
           const val = this._getControllerValue(prop);
           arg = val;
         }
+        if (!!arg.replace) { arg = arg.replace(/\'/g, ''); }
         return arg;
       });
 
@@ -346,9 +347,9 @@ class Aux {
       if (/\./.test(funcName)) {
         // execute the function in the controller property, for example: this.print.inConsole = () => {...}
         const propSplitted = funcName.split('.'); // ['print', 'inConsole']
-        let obj = this;
-        for (const prop of propSplitted) { obj = obj[prop]; }
-        await obj(...funcArgs);
+        let func = this;
+        for (const prop of propSplitted) { func = func[prop]; }
+        await func(...funcArgs);
       } else {
         // execute the controller method
         if (!this[funcName]) { throw new Error(`Method "${funcName}" is not defined in the "${this.constructor.name}" controller.`); }
@@ -361,6 +362,12 @@ class Aux {
   }
 
 
+  /**
+   * Execute multiple functions, for example: data-rg-click="f1(); f2(a, b);";
+   * @param {string} funcDefs - definition of the functions: func1();func2(a, b);
+   * @param {HTMLElement} elem - element where is the data-rg-... attribute
+   * @param {Event} event - the DOM Event object
+   */
   async _funcsExe(funcDefs, elem, event) {
     const funcDefs_arr = funcDefs.split(';').filter(funcDef => !!funcDef).map(funcDef => funcDef.trim());
     for (const funcDef of funcDefs_arr) {
