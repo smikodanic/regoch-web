@@ -43,12 +43,12 @@ class Auth {
         'accept': '*/*', // 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'
         'content-type': 'text/html; charset=UTF-8'
       },
-      responseType: '' // 'blob' for file download (https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType)
+      responseType: '' // 'blob' for file download (https://developer.mozillfullnamea.org/en-US/docs/Web/API/XMLHttpRequest/responseType)
     };
     this.httpClient = new HTTPClient(opts);
 
     this.jwtToken; // JWT Token string: 'JWT ...'
-    this.loggedUser; // the user object: {first_name, last_name, username, ...}
+    this.loggedUser = this.getLoggedUserInfo(); // the user object: {first_name, last_name, username, ...}
   }
 
 
@@ -103,12 +103,23 @@ class Auth {
 
 
   /**
-   * Get logged user info (from the object property or cookie 'auth_loggedUser')
+   * Get logged user info from the object property (faster) or from the cookie 'auth_loggedUser' (slower)
    * @returns {object} - {first_name, last_name, ...}
    */
   getLoggedUserInfo() {
     const loggedUser = this.loggedUser || this.cookie.getObject('auth_loggedUser');
     return loggedUser;
+  }
+
+
+  /**
+   * Set logged user object.
+   * @param {object} user_obj - {first_name, last_name, ...}
+   * @returns {void}
+   */
+  setLoggedUserInfo(user_obj) {
+    this.loggedUser = user_obj;
+    this.cookie.putObject('auth_loggedUser', user_obj);
   }
 
 

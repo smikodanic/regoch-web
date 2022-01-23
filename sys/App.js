@@ -95,6 +95,18 @@ class App {
    */
   auth(auth) {
     this._controllerProp('$auth', auth);
+
+    // bindings because of this in Auth:login, logout, getLoggedUserInfo, etc methods,
+    // so the methods can be used in HTML, for example: data-rg-click="$auth.logout()"
+    for (const ctrlName of Object.keys(this.ctrls)) {
+      const $auth = this.ctrls[ctrlName]['$auth'];
+      $auth.login = $auth.login.bind($auth);
+      $auth.logout = $auth.logout.bind($auth);
+      $auth.getLoggedUserInfo = $auth.getLoggedUserInfo.bind($auth);
+      $auth.setLoggedUserInfo = $auth.setLoggedUserInfo.bind($auth);
+      $auth.getJWTtoken = $auth.getJWTtoken.bind($auth);
+    }
+
     return this;
   }
 
