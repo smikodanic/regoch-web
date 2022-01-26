@@ -129,11 +129,6 @@ class Form {
         if (elem.checked) { valArr.push(v); val = valArr; }
         if (i === elems.length && !val) { val = []; }
 
-      } else if (elem.type === 'radio') {
-        let v = elem.value;
-        if (convertType) { v = this._typeConvertor(elem.value); }
-        if (elem.checked) { val = v; }
-
       } else if (elem.type === 'select-multiple') {
         const opts = elem.selectedOptions; // selected options
         for (const opt of opts) {
@@ -144,11 +139,22 @@ class Form {
         }
         if (i === elems.length && !val) { val = []; }
 
+      } else if (elem.type === 'radio') {
+        let v = elem.value;
+        if (convertType) { v = this._typeConvertor(elem.value); }
+        if (elem.checked) { val = v; }
+
       } else if (elem.type === 'number') {
         val = elem.valueAsNumber;
 
       } else if (elem.type === 'password') {
         val = elem.value;
+
+      } else if (elem.type === 'file' && elem.multiple) {
+        val = elem.files;
+
+      } else if (elem.type === 'file') {
+        val = elem.files[0];
 
       } else {
         let v = elem.value;

@@ -492,6 +492,12 @@ class Aux {
     } else if (elem.type === 'password') {
       val = elem.value;
 
+    } else if (elem.type === 'file' && elem.multiple) {
+      val = elem.files;
+
+    } else if (elem.type === 'file') {
+      val = elem.files[0];
+
     } else {
       const v = this._typeConvertor(elem.value);
       val = v;

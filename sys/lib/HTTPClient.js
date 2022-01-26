@@ -15,6 +15,7 @@ class HTTPClient {
       this.opts = {
         encodeURI: false,
         timeout: 8000,
+        responseType: '', // 'blob' for file download (https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType)
         retry: 3,
         retryDelay: 5500,
         maxRedirects: 3,
@@ -22,15 +23,16 @@ class HTTPClient {
           'authorization': '',
           'accept': '*/*', // 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'
           'content-type': 'text/html; charset=UTF-8'
-        },
-        responseType: '' // 'blob' for file download (https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType)
+        }
       };
     } else {
       this.opts = opts;
     }
 
-    // default request headers
-    this.headers = this.opts.headers;
+    // initial values for timeout, responseType and req_headers
+    this.timeout = this.opts.timeout;
+    this.responseType = this.opts.responseType;
+    this.req_headers = { ...this.opts.headers };
 
     // init the xhr
     this.xhr = new XMLHttpRequest();
@@ -39,106 +41,6 @@ class HTTPClient {
     this.interceptor;
   }
 
-
-
-  /********** PRIVATES *********/
-
-  /**
-   * Parse url.
-   * @param {String} url - http://www.adsuu.com/some/thing.php?x=2&y=3
-   */
-  _parseUrl(url) {
-    url = this._correctUrl(url);
-    const urlObj = new URL(url);
-    this.url = url;
-    this.protocol = urlObj.protocol;
-    this.hostname = urlObj.hostname;
-    this.port = urlObj.port;
-    this.pathname = urlObj.pathname;
-    this.queryString = urlObj.search;
-
-    // debug
-    /*
-    console.log('this.url:: ', this.url); // http://localhost:8001/www/products?category=databases
-    console.log('this.protocol:: ', this.protocol); // http:
-    console.log('this.hostname:: ', this.hostname); // localhost
-    console.log('this.port:: ', this.port); // 8001
-    console.log('this.pathname:: ', this.pathname); // /www/products
-    console.log('this.queryString:: ', this.queryString); // ?category=databases
-    */
-
-    return url;
-  }
-
-
-  /**
-   * URL corrections
-   */
-  _correctUrl(url) {
-    if (!url) { throw new Error('URL is not defined'); }
-
-    // 1. trim from left and right
-    url = url.trim();
-
-    // 2. add protocol
-    if (!/^https?:\/\//.test(url)) {
-      url = 'http://' + url;
-    }
-
-    // 3. remove multiple empty spaces and insert %20
-    if (this.opts.encodeURI) {
-      url = encodeURI(url);
-    } else {
-      url = url.replace(/\s+/g, ' ');
-      url = url.replace(/ /g, '%20');
-    }
-
-    return url;
-  }
-
-
-  /**
-   * Beautify error messages.
-   * @param {Error} error - original error
-   * @return formatted error
-   */
-  _formatError(error, url) {
-    // console.log('_formatError::', error, url);
-    const err = new Error(error);
-
-
-    // reformatting NodeJS errors
-    if (error.target.status === 0) {
-      err.status = 0;
-      err.message = `Status:0 Bad Request ${url}`;
-    } else {
-      err.status = error.status || 400;
-      err.message = error.message;
-    }
-
-    err.original = error;
-
-    return err; // formatted error is returned
-  }
-
-
-  /**
-   * Get current date/time
-   */
-  _getTime() {
-    const d = new Date();
-    return d.toISOString();
-  }
-
-
-  /**
-   * Get time difference in seconds
-   */
-  _getTimeDiff(start, end) {
-    const ds = new Date(start);
-    const de = new Date(end);
-    return (de.getTime() - ds.getTime()) / 1000;
-  }
 
 
 
@@ -163,7 +65,7 @@ class HTTPClient {
       statusMessage: '',
       https: false,
       req: {
-        headers: this.headers,
+        headers: this.req_headers,
         payload: undefined
       },
       res: {
@@ -202,19 +104,24 @@ class HTTPClient {
     // https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/open
     this.xhr.open(method, url, true, null, null);
 
-    // set the options
-    this.xhr.timeout = this.opts.timeout;
-    Object.keys(this.headers).forEach(prop => this.xhr.setRequestHeader(prop.toLowerCase(), this.headers[prop]));
-    this.xhr.responseType = this.opts.responseType || '';
+
+    // set the xhr options (works only after the xhr is opened)
+    this._xhr_timeout(this.timeout);
+    this._xhr_responseType(this.responseType);
+    this._xhr_requestHeaders(this.req_headers);
 
 
     /*** 2) add body to HTTP request ***/
     if (!!body_obj && !/GET/i.test(method)) {
       answer.req.payload = body_obj;
-      const body_str = JSON.stringify(body_obj);
+
+      const contentType = this.req_headers['content-type'] || '';
+      let body2send;
+      if (/application\/json/.test(contentType)) { body2send = JSON.stringify(body_obj); }
+      else { body2send = body_obj; }
 
       /*** 3) send request to server (with body) ***/
-      this.xhr.send(body_str);
+      this.xhr.send(body2send);
 
     } else {
       /*** 3) send request to server (without body) ***/
@@ -416,6 +323,78 @@ class HTTPClient {
 
 
   /**
+   * Send POST request where body is new FormData() object.
+   * For example (frontend code):
+   * // create from data
+   * const formData = new FormData();
+   * formData.append('db_id', db_id);
+   * formData.append('coll_name', coll_name);
+   * formData.append('csv_file', csv_file);
+   * @param {string} url - https://api.example.com/someurl
+   * @param {FormData} formData - the FormData instance
+   * @returns {Promise<answer>}
+   */
+  async sendFormData(url, formData) {
+    // content-type should be removed for multipart/form-data as defined at https://fetch.spec.whatwg.org/#typedefdef-xmlhttprequestbodyinit
+    this.setReqHeaders({
+      'content-type': `multipart/form-data`,
+      'accept': '*/*'
+    });
+    this.delReqHeaders(['content-type']);
+
+    const answer = await this.askOnce(url, 'POST', formData);
+
+    // convert content string to object
+    if (!!answer.res.content) {
+      try {
+        answer.res.content = JSON.parse(answer.res.content);
+      } catch (err) {
+        console.log('WARNING: Response content is not JSON.');
+      }
+    }
+
+    return answer;
+  }
+
+
+  /**
+   * Convert JS Object to FormData and prepare it for sendFormData()
+   * @param {object} formObj - object which needs to be converted
+   * @returns {FormData}
+   */
+  object2formdata(formObj) {
+    const formData = new FormData();
+    for (const [key, val] of Object.entries(formObj)) { formData.set(key, val); }
+    return formData;
+  }
+
+
+
+  /** TODO
+   * Send HTML Form fields. Custom boundary for multipart/form-data .
+   * @param {string} url - https://api.example.com/someurl
+   * @param {FormData} formData - the FormData instance
+   * @param {string} contentType - request header content-type value, which can be application/x-www-form-urlencoded or multipart/form-data (for files) or text/plain (Forms with mailto:)
+   * @returns {Promise<answer>}
+   */
+  async sendForm(url, formData, contentType = 'application/x-www-form-urlencoded') {
+    // define boundary
+    let boundary = 'RegochWebHttpClient';
+    boundary += Math.floor(Math.random() * 32768);
+    boundary += Math.floor(Math.random() * 32768);
+    boundary += Math.floor(Math.random() * 32768);
+    console.log('boundary::', boundary);
+
+    const body = `--${boundary}\r\nContent-Disposition: form-data; name="db_id"\r\n\r\n12345\r\n--${boundary}--`;
+    console.log('body::', body);
+
+    const answer = await this.askOnce(url, 'POST', formData);
+    return answer;
+  }
+
+
+
+  /**
    * Stop the sent request.
    * @returns {void}
    */
@@ -440,7 +419,7 @@ class HTTPClient {
   /********** HEADERS *********/
 
   /**
-   * Change request header object. The headerObj will be appended to previously defined this.headers and headers with the same name will be overwritten.
+   * Change request header object. The headerObj will be appended to previously defined this.req_headers and headers with the same name will be overwritten.
    * @param {Object} headerObj - {'authorization', 'user-agent', accept, 'cache-control', 'host', 'accept-encoding', 'connection'}
    * @returns {void}
    */
@@ -460,9 +439,8 @@ class HTTPClient {
    * @returns {void}
    */
   setReqHeader(headerName, headerValue) {
-    const headerName2 = headerName.toLowerCase();
-    const headerObj = { [headerName2]: headerValue };
-    this.headers = Object.assign(this.headers, headerObj);
+    headerName = headerName.toLowerCase();
+    this.req_headers[headerName] = headerValue;
   }
 
   /**
@@ -472,7 +450,7 @@ class HTTPClient {
    */
   delReqHeaders(headerNames) {
     headerNames.forEach(headerName => {
-      delete this.headers[headerName];
+      delete this.req_headers[headerName];
     });
   }
 
@@ -481,7 +459,7 @@ class HTTPClient {
    * @returns {object}
    */
   getReqHeaders() {
-    return this.headers;
+    return this.req_headers;
   }
 
 
@@ -502,6 +480,144 @@ class HTTPClient {
       }
     });
     return headersObj;
+  }
+
+
+
+
+  /********** PRIVATES *********/
+
+  /**
+   * Parse url.
+   * @param {String} url - http://www.adsuu.com/some/thing.php?x=2&y=3
+   */
+  _parseUrl(url) {
+    url = this._correctUrl(url);
+    const urlObj = new URL(url);
+    this.url = url;
+    this.protocol = urlObj.protocol;
+    this.hostname = urlObj.hostname;
+    this.port = urlObj.port;
+    this.pathname = urlObj.pathname;
+    this.queryString = urlObj.search;
+
+    // debug
+    /*
+    console.log('this.url:: ', this.url); // http://localhost:8001/www/products?category=databases
+    console.log('this.protocol:: ', this.protocol); // http:
+    console.log('this.hostname:: ', this.hostname); // localhost
+    console.log('this.port:: ', this.port); // 8001
+    console.log('this.pathname:: ', this.pathname); // /www/products
+    console.log('this.queryString:: ', this.queryString); // ?category=databases
+    */
+
+    return url;
+  }
+
+
+  /**
+   * URL corrections
+   */
+  _correctUrl(url) {
+    if (!url) { throw new Error('URL is not defined'); }
+
+    // 1. trim from left and right
+    url = url.trim();
+
+    // 2. add protocol
+    if (!/^https?:\/\//.test(url)) {
+      url = 'http://' + url;
+    }
+
+    // 3. remove multiple empty spaces and insert %20
+    if (this.opts.encodeURI) {
+      url = encodeURI(url);
+    } else {
+      url = url.replace(/\s+/g, ' ');
+      url = url.replace(/ /g, '%20');
+    }
+
+    return url;
+  }
+
+
+  /**
+   * Beautify error messages.
+   * @param {Error} error - original error
+   * @return formatted error
+   */
+  _formatError(error, url) {
+    // console.log('_formatError::', error, url);
+    const err = new Error(error);
+
+
+    // reformatting NodeJS errors
+    if (error.target.status === 0) {
+      err.status = 0;
+      err.message = `Status:0 Bad Request ${url}`;
+    } else {
+      err.status = error.status || 400;
+      err.message = error.message;
+    }
+
+    err.original = error;
+
+    return err; // formatted error is returned
+  }
+
+
+  /**
+   * Get current date/time
+   */
+  _getTime() {
+    const d = new Date();
+    return d.toISOString();
+  }
+
+
+  /**
+   * Get time difference in seconds
+   */
+  _getTimeDiff(start, end) {
+    const ds = new Date(start);
+    const de = new Date(end);
+    return (de.getTime() - ds.getTime()) / 1000;
+  }
+
+
+
+  /********** PRIVATE XHR OPTIONS *********/
+  /**
+   * Modify request headers. This is the headers sent to the server.
+   * https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/setRequestHeader
+   * To change it use header methods.
+   * @param {object} headers - headers object: { 'content-type': 'text/html', accept: 'application/json' }
+   * @returns {void}
+   */
+  _xhr_requestHeaders(headers) {
+    Object.keys(headers).forEach(prop => this.xhr.setRequestHeader(prop.toLowerCase(), headers[prop]));
+  }
+
+  /**
+   * Modify request timeout in miliseconds. This is the time for which will xhr wait for response from the server.
+   * https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/timeout
+   * To change it use: httpClient.timeout = 120000;
+   * @param {number} ms - the timeout period
+   * @returns {void}
+   */
+  _xhr_timeout(ms) {
+    this.xhr.timeout = +ms || 0; // 0 means the request will never be timeout
+  }
+
+  /**
+   * Modify the response type. This is the reponse tye which client expects from the server. For example 'blob' if client waits for file download.
+   * https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType
+   * To change it use: httpClient.responseType = 'blob';
+   * @param {string} type - text, arraybuffer, blob, document, json, ms-stream
+   * @returns {void}
+   */
+  _xhr_responseType(type) {
+    this.xhr.responseType = type || 'text';
   }
 
 
