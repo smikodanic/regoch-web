@@ -25,6 +25,8 @@ class Router extends RegochRouter {
     if (!!route && !ctrl) { throw new Error(`Controller is not defined for route "${route}".`); }
     if (/autoLogin|isLogged|hasRole/.test(authGuards.join()) && !ctrl.$auth) { throw new Error(`Auth guards (autoLogin, isLogged, hasRole) are used but Auth is not injected in the controller ${ctrl.constructor.name}. Use App::controllerAuth().`); }
 
+    const assign_ctrl = trx => { trx.ctrl = ctrl; }; // add ctrl in trx so that controller it can be used in preflight and postflight
+
     const guards = [];
     if (authGuards.length && ctrl.$auth) {
       const autoLogin = ctrl.$auth.autoLogin.bind(ctrl.$auth);
@@ -39,7 +41,8 @@ class Router extends RegochRouter {
     const processing = ctrl.processing.bind(ctrl);
     const postflight = !!ctrl.$postflight ? ctrl.$postflight : []; // array of postflight functions, will be executed on every route ater the controller's postrend()
 
-    this.when(route, ...guards, ...preflight, processing, ...postflight);
+
+    this.when(route, assign_ctrl, ...guards, ...preflight, processing, ...postflight);
   }
 
 
