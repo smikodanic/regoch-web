@@ -228,12 +228,13 @@ class DataRgListeners extends Aux {
 
 
   /**
-   * data-rg-set="<controllerProperty>"
+   * data-rg-set="<controllerProperty> [@@convertType|convertTypeDont]"
    * Parse the "data-rg-set" attribute. Get the value from elements like INPUT, SELECT, TEXTAREA, .... and set the controller property i.e. $model.
    * Examples:
    * data-rg-set="product" - product is the controller property
    * data-rg-set="product.name"
-   * data-rg-set="product.name @@ preventRender" -> render() will not be executed
+   * data-rg-set="product.price @@ convertType" -> will convert price to number
+   * data-rg-set="product.price @@ convertTypeDont" -> will not convert price to number, it will stay string
    * @returns {void}
    */
   rgSet() {
@@ -248,9 +249,15 @@ class DataRgListeners extends Aux {
       const attrVal = elem.getAttribute(attrName);
       if (!attrVal) { console.error(`Attribute "data-rg-set" has bad definition (data-rg-set="${attrVal}").`); continue; }
 
+      const attrValSplited = attrVal.split(this.$rg.separator);
+
+      const prop = attrValSplited[0].trim();
+
+      const convertType_param = !!attrValSplited[1] ? attrValSplited[1].trim() : ''; // 'convertType' | 'convertTypeDont'
+      const convertType = convertType_param === 'convertTypeDont' ? false : true;
+
       const handler = event => {
-        const prop = attrVal.trim();
-        const val = this._getElementValue(elem);
+        const val = this._getElementValue(elem, convertType);
         this._setModelValue(prop, val);
         this._debug('rgSet', `Executed rgSet listener --> controller property:: ${prop} = ${val}`, 'orangered');
       };
@@ -265,12 +272,14 @@ class DataRgListeners extends Aux {
 
 
   /**
-   * data-rg-model="<controllerProp>"
+   * data-rg-model="<controllerProp> [@@convertType|convertTypeDont]"
    * Bind controller property and view INPUT, SELECT, TEXTAREA, ...etc in both directions.
    * When the view is updated the controller property will be updated and when controller property is updated the view will be updated.
    * This is a shortcut of rgSet and rgValue, for example <input type="text" data-rg-input="product" data-rg-set="product"> is <input type="text" data-rg-model="product">
    * Example:
    * data-rg-model="product.name"
+   * data-rg-model="product.price @@ convertType" -> will convert price to number
+   * data-rg-model="product.price @@ convertTypeDont" -> will not convert price to number, it will stay string
    * @returns {void}
    */
   rgModel() {
@@ -285,7 +294,12 @@ class DataRgListeners extends Aux {
       const attrVal = elem.getAttribute(attrName);
       if (!attrVal) { console.error(`Attribute "data-rg-model" has bad definition (data-rg-model="${attrVal}").`); continue; }
 
-      const prop = attrVal.trim();
+      const attrValSplited = attrVal.split(this.$rg.separator);
+
+      const prop = attrValSplited[0].trim();
+
+      const convertType_param = !!attrValSplited[1] ? attrValSplited[1].trim() : ''; // 'convertType' | 'convertTypeDont'
+      const convertType = convertType_param === 'convertTypeDont' ? false : true;
 
       /** SETTER **/
       const val1 = this._getControllerValue('$model.' + prop);
@@ -294,7 +308,7 @@ class DataRgListeners extends Aux {
 
       /** LISTENER **/
       const handler = event => {
-        const val2 = this._getElementValue(elem);
+        const val2 = this._getElementValue(elem, convertType);
         this._setModelValue(prop, val2);
         this._debug('rgModel', `Executed rgModel listener --> controller property:: ${prop} = ${val2}`, 'orangered');
       };

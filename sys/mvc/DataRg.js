@@ -19,11 +19,11 @@ class DataRg extends DataRgListeners {
 
 
   /**
-   * data-rg-setinitial="<controllerProperty>"
+   * data-rg-setinitial="<controllerProperty> [@@convertType|convertTypeDont]"
    * Parse the "data-rg-setinitial" attribute. Get the element value and set the controller property value. The element is input, textarea or select tag.
    * Examples:
-   * data-rg-setinitial="product"
-   * data-rg-setinitial="employee.name"
+   * data-rg-setinitial="product" or data-rg-setinitial="product @@convertType" - convert data type automatically, for example: '5' convert to Number, or JSON to Object
+   * data-rg-setinitial="employee.name @@convertTypeDont" - do not convert data type automatically
    * @returns {void}
    */
   rgSetinitial() {
@@ -35,11 +35,17 @@ class DataRg extends DataRgListeners {
     if (!elems.length) { return; }
 
     for (const elem of elems) {
-      const attrVal = elem.getAttribute(attrName);
+      const attrVal = elem.getAttribute(attrName) || ''; // 'controllerProperty @@convertTypeNot'
       if (!attrVal) { console.error(`rgSetinitial Error:: Attribute has bad definition (data-rg-setinitial="${attrVal}").`); continue; }
 
-      const val = this._getElementValue(elem);
-      const prop = attrVal.trim();
+      const attrValSplited = attrVal.split(this.$rg.separator);
+
+      const prop = attrValSplited[0].trim();
+
+      const convertType_param = !!attrValSplited[1] ? attrValSplited[1].trim() : ''; // 'convertType' | 'convertTypeDont'
+      const convertType = convertType_param === 'convertTypeDont' ? false : true;
+
+      const val = this._getElementValue(elem, convertType);
       this._setControllerValue('$model.' + prop, val);
 
       this._debug('rgSetinitial', `elem.type:: ${elem.type} -- set initial --> ${prop}:: ${val}`, 'navy');

@@ -314,7 +314,7 @@ class Aux {
       .map(arg => {
         arg = arg.trim();
         if (arg === '$element') { arg = elem; }
-        else if (arg === '$value') { arg = this._getElementValue(elem); }
+        else if (arg === '$value') { arg = this._getElementValue(elem, true); }
         else if (arg === '$event') { arg = event; }
         else if ((arg === 'true' || arg === 'false') && !/\'/.test(arg)) { arg = JSON.parse(arg); } // boolean
         else if (/^-?\d+\.?\d*$/.test(arg) && !/\'/.test(arg)) { arg = +arg; } // number
@@ -327,7 +327,7 @@ class Aux {
           const val = this._getControllerValue(prop);
           arg = val;
         }
-        if (!!arg.replace) { arg = arg.replace(/\'/g, ''); }
+        if (!!arg && !!arg.replace) { arg = arg.replace(/\'/g, ''); }
         return arg;
       });
 
@@ -452,9 +452,10 @@ class Aux {
    * Get the HTML form element value. Make correction according to the element type & value type.
    * Element types: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
    * @param {HTMLElement} elem - HTML form element
+   * @param {boolean} convertType - default true
    * @returns {any} val - single value or array for checkbox and select-multiple
    */
-  _getElementValue(elem) {
+  _getElementValue(elem, convertType = true) {
     // pickup all elements with same name="something", for example checkboxes
     let val;
 
@@ -463,7 +464,8 @@ class Aux {
       const valArr = [];
       let i = 1;
       for (const elem of elems) {
-        const v = this._typeConvertor(elem.value);
+        let v = elem.value;
+        if (convertType) { v = this._typeConvertor(elem.value); }
         if (elem.checked) { valArr.push(v); val = valArr; }
         if (i === elems.length && !val) { val = []; }
         i++;
@@ -474,7 +476,8 @@ class Aux {
       const valArr = [];
       let i = 1;
       for (const opt of opts) {
-        const v = this._typeConvertor(opt.value);
+        let v = opt.value;
+        if (convertType) { v = this._typeConvertor(opt.value); }
         valArr.push(v);
         val = valArr;
         if (i === opts.length && !val) { val = []; }
@@ -482,7 +485,8 @@ class Aux {
       }
 
     } else if (elem.type === 'radio') {
-      const v = this._typeConvertor(elem.value);
+      let v = elem.value;
+      if (convertType) { v = this._typeConvertor(elem.value); }
       if (elem.checked) { val = v; }
 
     } else if (elem.type === 'number') {
@@ -499,7 +503,8 @@ class Aux {
       val = elem.files[0];
 
     } else {
-      const v = this._typeConvertor(elem.value);
+      let v = elem.value;
+      if (convertType) { v = this._typeConvertor(elem.value); }
       val = v;
     }
 
