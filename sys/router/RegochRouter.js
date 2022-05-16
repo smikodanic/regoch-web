@@ -134,7 +134,8 @@ class RegochRouter {
    * @returns {Promise<object>}
    */
   async exe() {
-    const uriParsed = this.trx.uriParsed; // shop/register/john/23
+    const trx_cloned = { ...this.trx }; // clone trx in case that this.trx is changing to fast
+    const uriParsed = trx_cloned.uriParsed; // shop/register/john/23
 
     /*** FIND ROUTE ***/
     // found route definition
@@ -151,22 +152,22 @@ class RegochRouter {
 
     /*** EXECUTE FOUND ROUTE FUNCTIONS */
     if (!!routeDef_found) {
-      this.trx.routeParsed = routeDef_found.routeParsed;
-      this.trx.query = uriParsed.queryObject;
-      this.trx.params = !!this.trx.routeParsed ? this._getParams(routeDef_found.routeParsed.full, uriParsed.path) : {};
+      trx_cloned.routeParsed = routeDef_found.routeParsed;
+      trx_cloned.query = uriParsed.queryObject;
+      trx_cloned.params = !!trx_cloned.routeParsed ? this._getParams(routeDef_found.routeParsed.full, uriParsed.path) : {};
 
-      for (const func of routeDef_found.funcs) { await func(this.trx); }
+      for (const func of routeDef_found.funcs) { await func(trx_cloned); }
     } else if (!!routeDef_notfound) {
-      for (const func of routeDef_notfound.funcs) { await func(this.trx); }
+      for (const func of routeDef_notfound.funcs) { await func(trx_cloned); }
     }
 
 
     if (!!routeDef_do && !!routeDef_do.funcs && !!routeDef_do.funcs.length) {
-      for (const func of routeDef_do.funcs) { await func(this.trx); }
+      for (const func of routeDef_do.funcs) { await func(trx_cloned); }
     }
 
 
-    return this.trx;
+    return trx_cloned;
   }
 
 
