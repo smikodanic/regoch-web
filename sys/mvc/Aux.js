@@ -343,7 +343,6 @@ class Aux {
    */
   async _funcExe(funcName, funcArgs) {
     try {
-
       if (/\./.test(funcName)) {
         // execute the function in the controller property, for example: this.print.inConsole = () => {...}
         const propSplitted = funcName.split('.'); // ['print', 'inConsole']
@@ -373,6 +372,23 @@ class Aux {
     for (const funcDef of funcDefs_arr) {
       const { funcName, funcArgs } = this._funcParse(funcDef, elem, event);
       await this._funcExe(funcName, funcArgs);
+    }
+  }
+
+
+  /**
+   * Execute the statement. For example: age = 3 in data-rg-click="age = 3" willset model this.$model.age=3
+   * @param {string} statement - JS statement, for example: age = 3
+   * @return {void}
+   */
+  async _statementExe(statement) {
+    try {
+      const splitted = statement.split('=');
+      const field = splitted[0].trim();
+      const value = splitted[1].trim().replace(/\'|\"|\`/g, '');
+      this.$model[field] = value; // set the model
+    } catch (err) {
+      console.error(err);
     }
   }
 
